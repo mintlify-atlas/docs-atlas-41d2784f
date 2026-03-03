@@ -1,0 +1,59 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Hand Crafted Badge",
+  "projectDescription": "A tool to track and display the percentage of human vs AI-assisted commits in your GitHub repository.",
+  "theme": "mint",
+  "primaryColor": "#8B4513",
+  "lightColor": "#D2691E",
+  "darkColor": "#654321",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Usage",
+        "pages": [
+          "usage/running-the-script",
+          "usage/configuration",
+          "usage/github-actions"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/detection-patterns",
+          "reference/output-format",
+          "reference/environment-variables"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/troubleshooting",
+          "advanced/faq",
+          "advanced/contributing"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automatic detection of AI-assisted commits from major tools (GitHub Copilot, Cursor, Claude, etc.)",
+    "GitHub Actions workflow for automatic badge updates",
+    "Shields.io badge integration for README display",
+    "Configurable commit limits for large repositories",
+    "Support for 15+ AI coding assistant patterns"
+  ],
+  "publicApiSurface": [
+    "calculate-stats.js (main script)",
+    "getCommits() - Extract commit history",
+    "analyzeCommits() - Calculate human vs AI ratios",
+    "AI_PATTERNS - Detection regex patterns",
+    "COMMIT_LIMIT environment variable"
+  ]
+}
