@@ -1,0 +1,276 @@
+---
+title: FAQ
+description: Frequently asked questions about the Hand Crafted Badge
+---
+
+## Frequently Asked Questions
+
+Answers to common questions about how the Hand Crafted Badge works, based on the actual implementation.
+
+<Accordion title="How does the AI detection work?">
+  The script analyzes commit messages for specific patterns that AI tools add when they assist with code.
+
+  **Detection Process:**
+  
+  1. The script runs `git log --format="%B%n---COMMIT-END---" --no-merges` to get all commit messages (line 34 in `calculate-stats.js`)
+  
+  2. Each commit message is tested against 24 regex patterns defined in `AI_PATTERNS` (lines 4-28)
+  
+  3. If ANY pattern matches, the commit is counted as "AI Co-edited" (lines 46-50)
+
+  **Example patterns:**
+  ```javascript
+  const AI_PATTERNS = [
+    /Co-authored-by: GitHub Copilot <noreply@github\.com>/i,
+    /Co-authored-by: Cursor <sos@cursor\.sh>/i,
+    /AI-Assistant:/i,
+    /Generated-by:/i,
+    /\[aider\]/i,
+    /Claude/i,
+    /amazon-q-developer\[bot\]/i,
+    // ... and more
+  ];
+  ```
+
+  **Calculation:**
+  ```javascript
+  const humanCount = totalCount - aiCount;
+  const humanPercentage = Math.round((humanCount / totalCount) * 100);
+  ```
+
+  <Note>
+    The detection is case-insensitive (the `i` flag) and matches patterns anywhere in the commit message, including trailers, body, and subject line.
+  </Note>
+</Accordion>
+
+<Accordion title="Can I add custom AI detection patterns?" id="custom-patterns">
+  Yes! You can modify the `AI_PATTERNS` array in `calculate-stats.js` to detect additional AI tools or custom commit formats.
+
+  **Steps to add patterns:**
+  
+  <Steps>
+    <Step title="Edit calculate-stats.js">
+      Open the file and locate the `AI_PATTERNS` array (lines 4-28)
+    </Step>
+    
+    <Step title="Add your pattern">
+      Add a new regex pattern to the array:
+      ```javascript
+      const AI_PATTERNS = [
+        /Co-authored-by: GitHub Copilot <noreply@github\.com>/i,
+        // ... existing patterns ...
+        /My-Custom-AI-Tool:/i,  // Your new pattern
+      ];
+      ```
+    </Step>
+    
+    <Step title="Test locally">
+      Run the script to verify your pattern works:
+      ```bash
+      node calculate-stats.js
+      ```
+    </Step>
+  </Steps>
+
+  **Common custom patterns:**
+  - Custom commit prefixes: `/\[my-ai-tool\]/i`
+  - Team-specific trailers: `/AI-Assisted-by: TeamMember/i`
+  - Tool-specific co-authors: `/Co-authored-by: YourTool <email@domain\.com>/i`
+
+  <Tip>
+    Use the `test-data/` directory to create sample commit messages for testing your patterns before deploying.
+  </Tip>
+</Accordion>
+
+<Accordion title="Does the script count merge commits?">
+  No, merge commits are explicitly excluded from the analysis.
+
+  The script uses the `--no-merges` flag when running git log (line 34):
+  ```javascript
+  const output = execSync(
+    `git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`
+  ).toString();
+  ```
+
+  **Why exclude merges?**
+  - Merge commits don't represent actual code authorship
+  - They would skew the statistics without providing meaningful data
+  - Focus remains on actual development commits
+
+  <Note>
+    If you want to include merge commits, remove `--no-merges` from line 34, but this is not recommended.
+  </Note>
+</Accordion>
+
+<Accordion title="How does it perform with large repositories?">
+  For repositories with thousands of commits, you can limit the analysis scope using the `COMMIT_LIMIT` environment variable.
+
+  **Performance considerations:**
+  
+  - **Default behavior:** Analyzes ALL commits in repository history (line 32 checks for limit)
+  - **With limit:** Only analyzes the most recent N commits
+  - **Recommended:** 500-1000 commits provides a representative sample
+
+  **Usage:**
+  
+  In GitHub Actions workflow:
+  ```yaml
+  - name: Calculate Stats
+    run: node calculate-stats.js
+    env:
+      COMMIT_LIMIT: 500
+  ```
+
+  Or locally:
+  ```bash
+  COMMIT_LIMIT=1000 node calculate-stats.js
+  ```
+
+  **Implementation:**
+  ```javascript
+  const limit = process.env.COMMIT_LIMIT ? `-n ${process.env.COMMIT_LIMIT}` : '';
+  const output = execSync(`git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`);
+  ```
+
+  <Warning>
+    Very large repositories without `COMMIT_LIMIT` may cause GitHub Actions to timeout or consume excessive resources.
+  </Warning>
+</Accordion>
+
+<Accordion title="Can I use this in private repositories?">
+  Yes! The analysis runs entirely locally in your GitHub Actions workflow.
+
+  **How it works:**
+  
+  1. The script runs in your repository's GitHub Actions environment
+  2. It only reads your local git history (no external API calls)
+  3. The output file (`hand-crafted-stats.json`) is committed to your repo
+
+  **Badge display:**
+  - **Public repos:** Badge displays automatically via Shields.io
+  - **Private repos:** Shields.io cannot access the JSON file by default
+    - You'll need to make the stats file public or use authentication tokens
+    - Alternative: Use GitHub Actions artifacts to generate a badge image
+
+  <Note>
+    The script itself has no restrictions on private repositories. Only the badge rendering through Shields.io is affected by repository visibility.
+  </Note>
+</Accordion>
+
+<Accordion title="Why these specific badge colors?">
+  The color thresholds are designed to encourage high human contribution rates.
+
+  **Color logic** (lines 77 in `calculate-stats.js`):
+  ```javascript
+  color: stats.humanPercentage > 80 ? 'green' : 
+         stats.humanPercentage > 50 ? 'yellow' : 
+         'orange'
+  ```
+
+  **Breakdown:**
+  - **Green** (>80%): High human contribution - most commits are hand-crafted
+  - **Yellow** (51-80%): Moderate AI assistance - balanced approach
+  - **Orange** (≤50%): High AI assistance - majority of commits use AI tools
+
+  You can customize these thresholds by modifying the ternary expression in line 77 of `calculate-stats.js`.
+
+  **Custom example:**
+  ```javascript
+  color: stats.humanPercentage > 90 ? 'brightgreen' : 
+         stats.humanPercentage > 70 ? 'green' :
+         stats.humanPercentage > 40 ? 'yellow' : 
+         'red'
+  ```
+</Accordion>
+
+<Accordion title="How often does the badge update?">
+  The badge updates automatically based on the workflow configuration.
+
+  **Update triggers** (workflow lines 3-7):
+  ```yaml
+  on:
+    push:
+      branches:
+        - main
+    workflow_dispatch:
+  ```
+
+  **Automatic updates:**
+  - Every push to the `main` branch triggers the workflow
+  - The script recalculates stats and commits the updated JSON
+  - Shields.io fetches the new stats within minutes
+
+  **Manual updates:**
+  - Go to Actions tab in your GitHub repository
+  - Select "Update Hand Crafted Badge" workflow
+  - Click "Run workflow" button
+  - Useful for testing or forcing an update
+
+  **Concurrency control:**
+  ```yaml
+  concurrency:
+    group: badge-update
+    cancel-in-progress: true
+  ```
+  Multiple pushes in quick succession will cancel earlier runs to avoid conflicts.
+
+  <Tip>
+    The commit message includes `[skip ci]` (line 37) to prevent the badge update from triggering itself recursively.
+  </Tip>
+</Accordion>
+
+<Accordion title="What Node.js version is required?">
+  The GitHub Actions workflow uses Node.js 20, but the script works with older versions.
+
+  **Workflow configuration** (lines 24-27):
+  ```yaml
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+  ```
+
+  **Local requirements:**
+  - Node.js 14+ (for `execSync` and modern JavaScript features)
+  - No external npm dependencies required
+  - Uses only built-in `child_process` and `fs` modules
+
+  Check your version:
+  ```bash
+  node --version
+  ```
+</Accordion>
+
+<Accordion title="Can I see which specific commits were flagged as AI-assisted?">
+  Currently, the script only outputs summary statistics. However, this is a planned feature.
+
+  **Current output** (lines 67-81):
+  ```bash
+  --- Stats ---
+  Total Commits: 150
+  Hand Crafted: 120 (80%)
+  AI Co-edited: 30
+  ```
+
+  **Future improvement** (from TODO.md):
+  > **Commit Detail View**: Create a simple web view or expanded JSON report that lists which commits were flagged as AI-assisted and why.
+
+  **Workaround:**
+  You can manually search for AI patterns in your git log:
+  ```bash
+  git log --format="%H %s" | while read hash subject; do
+    if git log -1 $hash --format="%B" | grep -iE "Co-authored-by.*AI|Copilot|Cursor|Claude"; then
+      echo "AI-assisted: $hash $subject"
+    fi
+  done
+  ```
+
+  See [Contributing](/advanced/contributing) to help implement this feature!
+</Accordion>
+
+## Still have questions?
+
+Check out:
+- [Troubleshooting](/advanced/troubleshooting) for common issues
+- [Contributing](/advanced/contributing) to suggest new features
+- The project's [GitHub repository](https://github.com/digitaloracle/handcrafted) for discussions

@@ -1,0 +1,341 @@
+---
+title: Contributing
+description: How to contribute to the Hand Crafted Badge project
+---
+
+## Contributing to Hand Crafted Badge
+
+We welcome contributions! Whether you're fixing bugs, adding new AI detection patterns, or implementing new features, this guide will help you get started.
+
+## Project Structure
+
+The project has a simple, focused architecture:
+
+```
+handcrafted/
+├── calculate-stats.js              # Core analysis script
+├── .github/workflows/
+│   └── human-crafted-badge.yml    # GitHub Actions workflow
+├── test-data/                      # Sample commit messages for testing
+├── hand-crafted-stats.json        # Generated output (Shields.io format)
+├── README.md                       # Documentation
+└── TODO.md                         # Future improvements
+```
+
+### Core Components
+
+<CardGroup cols={2}>
+  <Card title="calculate-stats.js" icon="code">
+    **Main analysis script**
+    - `AI_PATTERNS`: Array of 24 regex patterns (lines 4-28)
+    - `getCommits()`: Executes git log and parses commits (lines 30-40)
+    - `analyzeCommits()`: Tests each commit against patterns (lines 42-62)
+    - Output: JSON file for Shields.io badge (lines 73-81)
+  </Card>
+  
+  <Card title="GitHub Actions Workflow" icon="github">
+    **Automated badge updates**
+    - Triggers on push to main or manual dispatch
+    - Checks out repo with full history (`fetch-depth: 0`)
+    - Runs analysis script
+    - Commits updated stats back to repo
+  </Card>
+</CardGroup>
+
+## Adding New AI Detection Patterns
+
+The most common contribution is adding support for new AI tools.
+
+<Steps>
+  <Step title="Identify the pattern">
+    First, determine what your AI tool adds to commit messages. Common formats:
+    - **Co-author trailers**: `Co-authored-by: ToolName <email@domain.com>`
+    - **Custom trailers**: `AI-Assistant: ToolName` or `Generated-by: ToolName`
+    - **Commit prefixes**: `[ai-tool]` or `(ai-tool)`
+    - **Keywords**: Tool name appearing in commit body
+
+    Check your recent commits:
+    ```bash
+    git log --format="%B" -n 10
+    ```
+  </Step>
+  
+  <Step title="Add the pattern to AI_PATTERNS">
+    Edit `calculate-stats.js` and add your regex pattern to the array (lines 4-28):
+
+    ```javascript
+    const AI_PATTERNS = [
+      /Co-authored-by: GitHub Copilot <noreply@github\.com>/i,
+      /Co-authored-by: Cursor <sos@cursor\.sh>/i,
+      // ... existing patterns ...
+      
+      // Add your new pattern here
+      /Co-authored-by: YourAITool <email@example\.com>/i,
+      /\[your-ai-tool\]/i,
+    ];
+    ```
+
+    **Pattern guidelines:**
+    - Use case-insensitive matching (`/i` flag)
+    - Escape special regex characters (`.`, `@`, etc.)
+    - Be specific enough to avoid false positives
+    - Test common variations if the tool's format varies
+  </Step>
+  
+  <Step title="Test with sample data">
+    Create a test commit message in the `test-data/` directory:
+
+    ```bash
+    mkdir -p test-data
+    cat > test-data/your-tool-commit.txt << 'EOF'
+    feat: add new feature
+    
+    This commit adds a new feature with AI assistance.
+    
+    Co-authored-by: YourAITool <email@example.com>
+    EOF
+    ```
+
+    Or create a test commit in your repository:
+    ```bash
+    git commit --allow-empty -m "test: ai detection" -m "Co-authored-by: YourAITool <email@example.com>"
+    ```
+  </Step>
+  
+  <Step title="Run the script locally">
+    Test that your pattern is detected:
+
+    ```bash
+    node calculate-stats.js
+    ```
+
+    The output should show your test commit counted as AI-assisted:
+    ```
+    --- Stats ---
+    Total Commits: 150
+    Hand Crafted: 149 (99%)
+    AI Co-edited: 1
+    ```
+
+    <Tip>
+      Use `COMMIT_LIMIT` to speed up testing: `COMMIT_LIMIT=10 node calculate-stats.js`
+    </Tip>
+  </Step>
+  
+  <Step title="Update documentation">
+    Add your pattern to the supported tools list in `README.md` (around line 27-37):
+
+    ```markdown
+    ## Supported AI Detection Patterns
+    
+    - `Co-authored-by: GitHub Copilot <noreply@github.com>`
+    - ...
+    - `Co-authored-by: YourAITool <email@example.com>`
+    ```
+  </Step>
+</Steps>
+
+## Testing Your Changes
+
+Before submitting a pull request, verify your changes work correctly.
+
+### Local Testing
+
+1. **Run the script**
+   ```bash
+   node calculate-stats.js
+   ```
+   Verify the output shows expected counts and percentage.
+
+2. **Check the generated JSON**
+   ```bash
+   cat hand-crafted-stats.json
+   ```
+   Should output valid Shields.io format:
+   ```json
+   {
+     "schemaVersion": 1,
+     "label": "hand crafted",
+     "message": "85%",
+     "color": "green"
+   }
+   ```
+
+3. **Test with limited commits**
+   ```bash
+   COMMIT_LIMIT=50 node calculate-stats.js
+   ```
+   Ensure the limit is respected.
+
+### Testing with Test Data
+
+The `test-data/` directory contains sample commit messages for various AI tools. Add your own:
+
+```bash
+# Create a test file
+cat > test-data/windsurf-example.txt << 'EOF'
+refactor: update API endpoints
+
+Refactored the API layer for better performance.
+
+AI-Assistant: Windsurf/Cascade
+EOF
+```
+
+Use these files to manually verify pattern matching without polluting your actual git history.
+
+## Pull Request Process
+
+<Steps>
+  <Step title="Fork and clone">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/handcrafted.git
+    cd handcrafted
+    ```
+  </Step>
+  
+  <Step title="Create a feature branch">
+    ```bash
+    git checkout -b add-your-tool-detection
+    ```
+  </Step>
+  
+  <Step title="Make your changes">
+    - Add pattern to `AI_PATTERNS` array
+    - Update README.md with the new pattern
+    - Add test data if applicable
+    - Test locally with `node calculate-stats.js`
+  </Step>
+  
+  <Step title="Commit your changes">
+    ```bash
+    git add calculate-stats.js README.md
+    git commit -m "feat: add detection for YourAITool
+
+    - Add Co-authored-by pattern for YourAITool
+    - Update README with new supported pattern
+    - Add test data example"
+    ```
+  </Step>
+  
+  <Step title="Push and create PR">
+    ```bash
+    git push origin add-your-tool-detection
+    ```
+    Then create a pull request on GitHub with:
+    - Clear description of what AI tool you're adding
+    - Example commit message showing the pattern
+    - Test results from running the script locally
+  </Step>
+</Steps>
+
+## Future Improvements
+
+From `TODO.md`, here are features we'd love help implementing:
+
+<AccordionGroup>
+  <Accordion title="Dynamic AI Tool Updates">
+    **Goal:** Fetch the latest AI patterns from a central registry instead of hardcoding them.
+
+    **Approach:**
+    - Create a JSON file with pattern definitions
+    - Host on GitHub or CDN
+    - Script fetches patterns before analysis
+    - Fallback to built-in patterns if fetch fails
+
+    **Benefits:**
+    - Users get new patterns without updating the script
+    - Community can maintain a shared pattern database
+  </Accordion>
+  
+  <Accordion title="Commit Detail View">
+    **Goal:** Show which specific commits were flagged as AI-assisted and why.
+
+    **Current:** Only summary statistics (lines 67-70)
+    ```
+    Total Commits: 150
+    Hand Crafted: 120 (80%)
+    AI Co-edited: 30
+    ```
+
+    **Proposed:** Extended JSON output
+    ```json
+    {
+      "summary": { "total": 150, "human": 120, "ai": 30 },
+      "ai_commits": [
+        {
+          "hash": "abc123",
+          "message": "feat: add feature",
+          "pattern_matched": "Co-authored-by: GitHub Copilot"
+        }
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Multi-branch Support">
+    **Goal:** Analyze commits across multiple branches, not just `main`.
+
+    **Implementation ideas:**
+    - Accept branch names as environment variables
+    - Generate separate badges per branch
+    - Aggregate stats across all branches
+
+    **Current limitation:** Workflow only triggers on `main` (line 6)
+  </Accordion>
+  
+  <Accordion title="Trend Analysis">
+    **Goal:** Track human-vs-AI ratio over time with historical graphs.
+
+    **Approach:**
+    - Store historical snapshots of stats
+    - Generate sparkline or trend chart
+    - Display in README or separate page
+
+    **Example output:**
+    ```
+    Human percentage over time:
+    85% → 82% → 78% → 80% (current)
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Code Style Guidelines
+
+- Use clear, descriptive variable names
+- Add comments for complex regex patterns
+- Follow existing code structure and formatting
+- Keep the script simple - it should be easy to understand and modify
+- Avoid adding dependencies unless absolutely necessary (currently uses only Node.js built-ins)
+
+## Reporting Issues
+
+Found a bug or have a feature request?
+
+<CardGroup cols={2}>
+  <Card title="Report a Bug" icon="bug" href="https://github.com/digitaloracle/handcrafted/issues/new">
+    Include:
+    - What you expected to happen
+    - What actually happened
+    - Output from `node calculate-stats.js`
+    - Node.js version (`node --version`)
+  </Card>
+  
+  <Card title="Request a Feature" icon="lightbulb" href="https://github.com/digitaloracle/handcrafted/issues/new">
+    Describe:
+    - The feature or improvement
+    - Your use case
+    - How it would help others
+  </Card>
+</CardGroup>
+
+## Getting Help
+
+Need help with your contribution?
+
+- Check the [Troubleshooting](/advanced/troubleshooting) guide
+- Review the [FAQ](/advanced/faq)
+- Ask questions in GitHub Discussions
+- Reference the source code comments in `calculate-stats.js`
+
+We appreciate your contributions to making this tool better for everyone!

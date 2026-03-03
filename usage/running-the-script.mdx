@@ -1,0 +1,83 @@
+---
+title: Running the Script
+description: Learn how to run the calculate-stats.js script locally to analyze your repository's commit history
+---
+
+## Basic Command
+
+To run the script, navigate to your repository root and execute:
+
+```bash
+node calculate-stats.js
+```
+
+<Info>
+The script analyzes your git commit history to detect AI-assisted commits by scanning for known patterns and trailers from tools like GitHub Copilot, Cursor, Claude, Gemini, and more.
+</Info>
+
+## What the Script Does
+
+When you run the script, it performs the following steps:
+
+<Steps>
+  <Step title="Fetch Commit History">
+    The script runs `git log` to retrieve all non-merge commit messages from your repository's history.
+  </Step>
+  
+  <Step title="Analyze Each Commit">
+    Each commit message is tested against a set of AI detection patterns, including:
+    - `Co-authored-by: GitHub Copilot`
+    - `Co-authored-by: Claude`
+    - `Co-authored-by: cursor-ai`
+    - `AI-Assistant:`, `Generated-by:`, `AI-Generated: true`
+    - Tool names like Gemini, Codex, Amazon Q, Codeium, Tabnine, Aider
+  </Step>
+  
+  <Step title="Calculate Statistics">
+    The script calculates:
+    - Total number of commits
+    - Number of AI-assisted commits
+    - Number of hand-crafted (human) commits
+    - Percentage of hand-crafted commits
+  </Step>
+  
+  <Step title="Output Results">
+    Statistics are printed to the console and saved to `hand-crafted-stats.json`.
+  </Step>
+</Steps>
+
+## Example Output
+
+When the script runs, you'll see output like this:
+
+```bash
+--- Stats ---
+Total Commits: 42
+Hand Crafted: 35 (83%)
+AI Co-edited: 7
+
+Saved stats to hand-crafted-stats.json
+```
+
+## Generated JSON File
+
+The script creates a `hand-crafted-stats.json` file in your repository root with the following format:
+
+```json
+{
+  "schemaVersion": 1,
+  "label": "hand crafted",
+  "message": "83%",
+  "color": "green"
+}
+```
+
+### Badge Color Logic
+
+The badge color is automatically determined based on your hand-crafted percentage:
+
+- **Green** - More than 80% hand-crafted
+- **Yellow** - Between 50-80% hand-crafted  
+- **Orange** - Less than 50% hand-crafted
+
+This JSON file follows the [Shields.io endpoint schema](https://shields.io/endpoint) and is used to generate your repository badge.

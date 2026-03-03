@@ -1,0 +1,124 @@
+---
+title: 'Environment Variables'
+description: 'Configuration options via environment variables'
+---
+
+The Hand Crafted Badge tool can be configured using environment variables to control its behavior.
+
+## Available Variables
+
+<ParamField path="COMMIT_LIMIT" type="string" optional>
+  Limits the number of commits analyzed from git history.
+
+  **Default:** No limit (analyzes entire git history)
+
+  **Usage:** Set this variable when you want to analyze only recent commits rather than the full repository history. Useful for large repositories where analyzing thousands of commits may be slow or unnecessary.
+
+  **Source:** Used in `calculate-stats.js:32`
+</ParamField>
+
+## Usage Examples
+
+### Analyzing All Commits (Default)
+
+By default, the script analyzes the entire git history:
+
+```bash
+node calculate-stats.js
+```
+
+This runs with no limit, executing:
+```bash
+git log --format="%B%n---COMMIT-END---" --no-merges
+```
+
+### Limiting to Recent Commits
+
+Analyze only the last 100 commits:
+
+```bash
+COMMIT_LIMIT=100 node calculate-stats.js
+```
+
+Analyze only the last 500 commits:
+
+```bash
+COMMIT_LIMIT=500 node calculate-stats.js
+```
+
+This modifies the git command to:
+```bash
+git log -n 500 --format="%B%n---COMMIT-END---" --no-merges
+```
+
+### Using in GitHub Actions
+
+Set the environment variable in your workflow file:
+
+```yaml .github/workflows/human-crafted-badge.yml
+steps:
+  - name: Calculate stats
+    run: node calculate-stats.js
+    env:
+      COMMIT_LIMIT: 1000
+```
+
+## Implementation Details
+
+The `COMMIT_LIMIT` variable is checked in the `getCommits()` function:
+
+```javascript calculate-stats.js
+function getCommits() {
+  try {
+    const limit = process.env.COMMIT_LIMIT ? `-n ${process.env.COMMIT_LIMIT}` : '';
+    // Get all commit messages, separated by a special delimiter
+    const output = execSync(`git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`).toString();
+    return output.split('---COMMIT-END---').map(s => s.trim()).filter(Boolean);
+  } catch (error) {
+    console.error('Error reading git log:', error.message);
+    process.exit(1);
+  }
+}
+```
+
+**Source:** `calculate-stats.js:30-40`
+
+### How It Works
+
+1. The script checks if `process.env.COMMIT_LIMIT` is defined
+2. If set, it constructs the git flag: `-n ${COMMIT_LIMIT}`
+3. If not set, it uses an empty string (no limit)
+4. The limit is interpolated into the `git log` command
+
+## Performance Considerations
+
+- **Large repositories:** Setting a commit limit can significantly speed up analysis
+- **Continuous monitoring:** If running frequently (e.g., on every push), limiting to recent commits (500-1000) provides a good balance
+- **Full history accuracy:** For the most accurate badge, analyze all commits (no limit)
+
+## When to Use COMMIT_LIMIT
+
+<AccordionGroup>
+  <Accordion title="Recommended: Analyze full history">
+    For most repositories, analyzing the complete git history provides the most accurate representation of human vs AI contribution.
+
+    **Use when:**
+    - Repository has < 10,000 commits
+    - Accuracy is more important than speed
+    - Running infrequently (e.g., weekly or on-demand)
+  </Accordion>
+
+  <Accordion title="Use limit for large repos">
+    Setting a commit limit is recommended for very large repositories or when performance is a concern.
+
+    **Use when:**
+    - Repository has > 10,000 commits
+    - Performance is critical
+    - You only care about recent AI usage patterns
+    - Running on every push to main branch
+
+    **Recommended values:**
+    - 500-1000 for frequent updates
+    - 2000-5000 for weekly updates
+  </Accordion>
+</AccordionGroup>

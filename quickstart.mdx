@@ -1,80 +1,148 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get the Hand Crafted Badge running in your repository
 ---
 
-## Get started in three steps
+This guide will help you get the Hand Crafted Badge up and running quickly.
 
-Get your documentation site running locally and make your first customization.
+## Running the script
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Copy the script to your repository">
+    Ensure `calculate-stats.js` is in your repository root directory. See the [installation guide](/installation) for the complete script.
+  </Step>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Run the analyzer">
+    Execute the script from your repository root:
 
-### Step 2: Deploy your changes
+    ```bash
+    node calculate-stats.js
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    <Info>
+    The script requires Node.js to be installed. It uses only built-in modules (`child_process` and `fs`), so no dependencies need to be installed.
+    </Info>
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="View the output">
+    The script will display statistics about your commits:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    --- Stats ---
+    Total Commits: 42
+    Hand Crafted: 38 (90%)
+    AI Co-edited: 4
 
-### Step 3: Go live
+    Saved stats to hand-crafted-stats.json
+    ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    A `hand-crafted-stats.json` file will be created with the badge configuration:
+
+    ```json hand-crafted-stats.json
+    {
+      "schemaVersion": 1,
+      "label": "hand crafted",
+      "message": "90%",
+      "color": "green"
+    }
+    ```
+
+    <Tip>
+    The badge color automatically adjusts:
+    - Green for &gt;80% human commits
+    - Yellow for 50-80% human commits
+    - Orange for &lt;50% human commits
+    </Tip>
+  </Step>
+
+  <Step title="Add the badge to your README">
+    Add this markdown to your `README.md`, replacing `<USER>` and `<REPO>` with your GitHub username and repository name:
+
+    ```markdown
+    ![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/<USER>/<REPO>/main/hand-crafted-stats.json)
+    ```
+
+    For example, if your repository is `digitaloracle/handcrafted`:
+
+    ```markdown
+    ![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/digitaloracle/handcrafted/main/hand-crafted-stats.json)
+    ```
+  </Step>
+</Steps>
+
+## Example from this repository
+
+Here's the actual badge from the Hand Crafted Badge repository:
+
+![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/digitaloracle/handcrafted/main/hand-crafted-stats.json)
+
+Badge markdown:
+```markdown
+![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/digitaloracle/handcrafted/main/hand-crafted-stats.json)
+```
+
+## Advanced usage
+
+### Limit commits analyzed
+
+For repositories with extensive history, you can limit the number of commits analyzed:
+
+```bash
+COMMIT_LIMIT=500 node calculate-stats.js
+```
+
+This analyzes only the last 500 commits.
+
+### Test specific patterns
+
+The script detects AI-assisted commits by matching against patterns in commit messages. Common patterns include:
+
+- `Co-authored-by: GitHub Copilot <noreply@github.com>`
+- `Co-authored-by: Claude <noreply@anthropic.com>`
+- `Co-authored-by: cursor-ai <sos@cursor.sh>`
+- `AI-Assistant:` trailers
+- `Generated-by:` or `AI-Generated: true`
+
+To see which of your commits are detected as AI-assisted, you can manually inspect your git history:
+
+```bash
+git log --format="%B%n---" --no-merges | grep -i "co-authored-by"
+```
+
+## Automation with GitHub Actions
+
+Once you've verified the script works locally, set up the GitHub Actions workflow to automatically update the badge on every push. See the [installation guide](/installation) for workflow setup.
+
+<Warning>
+The badge won't display until `hand-crafted-stats.json` is committed and pushed to your repository's main branch.
+</Warning>
+
+## Troubleshooting
+
+### Badge not displaying
+
+- Ensure `hand-crafted-stats.json` exists in your main branch
+- Verify the URL in your badge markdown matches your repository path
+- Check that the file is accessible at the raw GitHub URL
+
+### No commits detected
+
+- The script requires git history to analyze. Run `git log` to verify commits exist
+- If using `COMMIT_LIMIT`, ensure the limit isn't set to 0
+
+### GitHub Action not running
+
+- Verify the workflow file is in `.github/workflows/` directory
+- Check that the workflow has `contents: write` permissions
+- Ensure you're pushing to the `main` branch (or update the branch name in the workflow)
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Installation" icon="download" href="/installation">
+    View the complete installation guide
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Customize detection patterns and settings
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

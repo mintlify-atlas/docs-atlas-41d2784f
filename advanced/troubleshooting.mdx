@@ -1,0 +1,216 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for the Hand Crafted Badge
+---
+
+## Common Issues
+
+This guide covers common problems you might encounter when setting up or using the Hand Crafted Badge, based on actual error handling and known issues in the codebase.
+
+<Accordion title="Badge not updating after push">
+  The most common cause is insufficient workflow permissions or missing git history.
+
+  **Solutions:**
+  
+  <Steps>
+    <Step title="Check workflow permissions">
+      Ensure your workflow has write permissions. In `.github/workflows/human-crafted-badge.yml:16-17`, verify:
+      ```yaml
+      permissions:
+        contents: write
+      ```
+    </Step>
+    
+    <Step title="Verify fetch-depth is set to 0">
+      The workflow needs full git history to analyze commits. Check line 22 of the workflow file:
+      ```yaml
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Critical for accessing full history
+      ```
+      Without `fetch-depth: 0`, only the most recent commit is available.
+    </Step>
+    
+    <Step title="Check branch name">
+      The workflow triggers only on pushes to `main` (line 6). If your default branch is `master` or something else, update:
+      ```yaml
+      on:
+        push:
+          branches:
+            - main  # Change to your default branch
+      ```
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title="Script errors: 'Error reading git log'">
+  This error originates from `calculate-stats.js:36-39` when the git command fails.
+
+  **Common causes:**
+  
+  1. **Not a git repository**
+     - The script requires a valid git repository with commit history
+     - Verify by running: `git log --oneline`
+  
+  2. **Node.js version mismatch**
+     - The workflow uses Node.js 20 (workflow line 27)
+     - If running locally, ensure you have Node.js 14+ installed
+     - Check with: `node --version`
+  
+  3. **Git not installed**
+     - The script uses `execSync` to run git commands
+     - Verify git is available: `git --version`
+
+  **Error handling code:**
+  ```javascript
+  try {
+    const output = execSync(`git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`).toString();
+    return output.split('---COMMIT-END---').map(s => s.trim()).filter(Boolean);
+  } catch (error) {
+    console.error('Error reading git log:', error.message);
+    process.exit(1);
+  }
+  ```
+</Accordion>
+
+<Accordion title="Wrong percentage displayed">
+  If the badge shows an unexpected percentage, the detection patterns may not match your AI tool's commit format.
+
+  **Diagnosis steps:**
+  
+  <Steps>
+    <Step title="Check your AI tool's commit format">
+      Run locally to see the detected stats:
+      ```bash
+      node calculate-stats.js
+      ```
+      This shows:
+      - Total commits analyzed
+      - Hand crafted count
+      - AI co-edited count
+      - Percentage calculation
+    </Step>
+    
+    <Step title="Examine commit trailers">
+      Check if your commits include AI trailers:
+      ```bash
+      git log --format="%B" -n 10
+      ```
+      Look for patterns like:
+      - `Co-authored-by: GitHub Copilot <noreply@github.com>`
+      - `Co-authored-by: Cursor <sos@cursor.sh>`
+      - `AI-Assistant: Gemini`
+    </Step>
+    
+    <Step title="Verify AI_PATTERNS coverage">
+      The script checks 24 patterns (lines 4-28 in `calculate-stats.js`). Common patterns include:
+      - GitHub Copilot, Cursor, Claude
+      - Aider (with various formats)
+      - Amazon Q, Codeium, Tabnine
+      - Generic AI email patterns
+      
+      If your tool isn't covered, see [FAQ - Can I add custom patterns?](/advanced/faq#custom-patterns)
+    </Step>
+  </Steps>
+
+  <Note>
+    The script uses `--no-merges` flag (line 34), so merge commits are not counted in the statistics.
+  </Note>
+</Accordion>
+
+<Accordion title="GitHub Actions workflow not running">
+  The workflow may not trigger if the configuration doesn't match your repository setup.
+
+  **Check these settings:**
+  
+  1. **Trigger configuration** (workflow lines 3-7)
+     ```yaml
+     on:
+       push:
+         branches:
+           - main
+       workflow_dispatch:
+     ```
+     - Runs automatically on push to `main` branch
+     - Can be manually triggered via Actions tab using `workflow_dispatch`
+  
+  2. **Concurrency settings** (workflow lines 9-11)
+     ```yaml
+     concurrency:
+       group: badge-update
+       cancel-in-progress: true
+     ```
+     If multiple pushes happen quickly, only the latest run continues
+  
+  3. **Manual trigger**
+     Go to Actions tab → "Update Hand Crafted Badge" → "Run workflow"
+
+  <Warning>
+    The commit message includes `[skip ci]` (line 37) to prevent infinite loops. Don't remove this!
+  </Warning>
+</Accordion>
+
+<Accordion title="Performance issues with large repositories">
+  Analyzing thousands of commits can be slow or hit resource limits.
+
+  **Solution: Use COMMIT_LIMIT**
+  
+  Set the `COMMIT_LIMIT` environment variable to analyze only recent commits (see line 32 in `calculate-stats.js`):
+
+  In your workflow file:
+  ```yaml
+  - name: Calculate Stats
+    run: node calculate-stats.js
+    env:
+      COMMIT_LIMIT: 500  # Only analyze last 500 commits
+  ```
+
+  Or run locally:
+  ```bash
+  COMMIT_LIMIT=500 node calculate-stats.js
+  ```
+
+  <Tip>
+    Start with 500-1000 commits for a representative sample. The default (no limit) analyzes all commits in your repository's history.
+  </Tip>
+</Accordion>
+
+<Accordion title="Badge shows 'invalid' or doesn't render">
+  This usually means Shields.io cannot access your `hand-crafted-stats.json` file.
+
+  **Verification steps:**
+  
+  1. **Check file exists in main branch**
+     - Navigate to your repository on GitHub
+     - Verify `hand-crafted-stats.json` is present in the root
+  
+  2. **Verify JSON format**
+     The file should match the schema (lines 73-78 in `calculate-stats.js`):
+     ```json
+     {
+       "schemaVersion": 1,
+       "label": "hand crafted",
+       "message": "85%",
+       "color": "green"
+     }
+     ```
+  
+  3. **Check badge URL**
+     Ensure your badge URL is correct:
+     ```markdown
+     ![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/hand-crafted-stats.json)
+     ```
+  
+  4. **Repository visibility**
+     For private repositories, Shields.io cannot access the file. The badge works with public repos or requires authentication tokens for private ones.
+</Accordion>
+
+## Getting Help
+
+If you encounter issues not covered here:
+
+- Check the [FAQ](/advanced/faq) for common questions
+- Review your workflow logs in the Actions tab
+- Test locally with `node calculate-stats.js` to isolate the issue
+- See [Contributing](/advanced/contributing) to report bugs or suggest improvements

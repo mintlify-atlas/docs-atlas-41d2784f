@@ -1,0 +1,67 @@
+---
+title: Introduction
+description: Track and display the percentage of human vs AI-assisted commits in your GitHub repository
+---
+
+This project provides a way to display a badge in your GitHub repository indicating how many of your commits were "Hand Crafted" (human) versus "AI Co-edited".
+
+![Hand Crafted](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/digitaloracle/handcrafted/main/hand-crafted-stats.json)
+
+<CardGroup cols={3}>
+  <Card title="Installation" icon="download" href="/installation">
+    Set up the badge in your repository
+  </Card>
+  <Card title="Quick start" icon="rocket" href="/quickstart">
+    Get up and running in minutes
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Customize detection patterns and limits
+  </Card>
+</CardGroup>
+
+## Key features
+
+The Hand Crafted Badge tool offers:
+
+- **Automatic detection** of AI-assisted commits from popular tools (GitHub Copilot, Cursor, Claude, Gemini, and more)
+- **Real-time updates** via GitHub Actions on every push to main branch
+- **Easy integration** with Shields.io for beautiful badge rendering
+- **Customizable limits** to analyze specific commit ranges
+- **Zero dependencies** - just a single Node.js script
+
+## How it works
+
+The badge generation follows a simple three-step process:
+
+<Steps>
+  <Step title="Detection">
+    A script scans your git history for trailers and patterns associated with AI tools (GitHub Copilot, Cursor, Windsurf, Claude, Gemini, etc.).
+  </Step>
+  
+  <Step title="Calculation">
+    It calculates the percentage of commits that are purely human-made by analyzing commit messages against known AI patterns.
+  </Step>
+  
+  <Step title="Badge">
+    A GitHub Action automatically updates a `hand-crafted-stats.json` file, which Shields.io uses to render a dynamic badge.
+  </Step>
+</Steps>
+
+## Supported AI detection patterns
+
+The tool automatically detects commits from these AI assistants:
+
+- **GitHub Copilot**: `Co-authored-by: GitHub Copilot <noreply@github.com>`
+- **Claude/Claude Code**: `Co-authored-by: Claude <noreply@anthropic.com>`, `Generated with Claude Code`
+- **Cursor**: `Co-authored-by: cursor-ai <sos@cursor.sh>`
+- **Windsurf/Cascade**: `AI-Assistant: ...`
+- **Gemini**: `AI-Assistant: Gemini`, `Gemini` patterns
+- **Aider**: `aider:`, `(aider)`, `[aider]` patterns
+- **Amazon Q**: `Amazon Q`, `amazon-q-developer[bot]`
+- **Codeium**: Commit pattern matching
+- **Tabnine**: Commit pattern matching
+- **Generic patterns**: `AI-Generated: true`, `Generated-by: ...`, `Assisted-by: ...`, `AI-Model: ...`, and generic AI co-authorship patterns (`*ai*@*`)
+
+<Tip>
+The badge color automatically adjusts based on the percentage: green (&gt;80%), yellow (50-80%), or orange (&lt;50%).
+</Tip>

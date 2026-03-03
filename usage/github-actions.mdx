@@ -1,0 +1,172 @@
+---
+title: GitHub Actions Setup
+description: Automate badge updates with GitHub Actions to keep your hand-crafted percentage current
+---
+
+## Overview
+
+The GitHub Actions workflow automatically runs the analysis script whenever you push to the main branch, keeping your badge up-to-date without manual intervention.
+
+## Complete Workflow File
+
+Create this file at `.github/workflows/human-crafted-badge.yml` in your repository:
+
+```yaml
+name: Update Hand Crafted Badge
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: badge-update
+  cancel-in-progress: true
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Important for full git history
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Calculate Stats
+        run: node calculate-stats.js
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add hand-crafted-stats.json
+          git commit -m "docs: update hand-crafted stats [skip ci]" || echo "No changes to commit"
+          git push origin HEAD:main
+```
+
+## Workflow Breakdown
+
+### Triggers
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+```
+
+The workflow runs:
+- **Automatically** on every push to the `main` branch
+- **Manually** via the GitHub Actions UI (`workflow_dispatch`)
+
+### Concurrency Control
+
+```yaml
+concurrency:
+  group: badge-update
+  cancel-in-progress: true
+```
+
+This prevents multiple workflow runs from conflicting. If a new push happens while the workflow is running, the old run is cancelled.
+
+### Permissions
+
+```yaml
+permissions:
+  contents: write
+```
+
+The workflow needs `write` permission to commit the updated `hand-crafted-stats.json` file back to the repository.
+
+### Job Steps
+
+<Steps>
+  <Step title="Checkout Repository">
+    ```yaml
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    ```
+    
+    <Tip>
+    The `fetch-depth: 0` parameter is **critical**. It fetches the entire git history, which the script needs to analyze all commits. Without this, only the latest commit would be available.
+    </Tip>
+  </Step>
+  
+  <Step title="Setup Node.js">
+    ```yaml
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    ```
+    
+    Installs Node.js 20 to run the `calculate-stats.js` script.
+  </Step>
+  
+  <Step title="Run Analysis Script">
+    ```yaml
+    - name: Calculate Stats
+      run: node calculate-stats.js
+    ```
+    
+    Executes the script, which analyzes commits and generates `hand-crafted-stats.json`.
+  </Step>
+  
+  <Step title="Commit and Push Changes">
+    ```yaml
+    - name: Commit and Push
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add hand-crafted-stats.json
+        git commit -m "docs: update hand-crafted stats [skip ci]" || echo "No changes to commit"
+        git push origin HEAD:main
+    ```
+    
+    Commits the updated JSON file and pushes it to the repository.
+  </Step>
+</Steps>
+
+## Preventing Infinite Loops
+
+<Warning>
+The commit message includes `[skip ci]` to prevent an infinite loop. Without this, the workflow would:
+1. Push a commit
+2. Trigger itself again
+3. Push another commit
+4. And so on...
+</Warning>
+
+The `[skip ci]` directive tells GitHub Actions to ignore commits with this message, breaking the loop.
+
+## Workflow in Action
+
+Once set up, the workflow will:
+
+1. Run automatically on every push to `main`
+2. Analyze your commit history
+3. Update the `hand-crafted-stats.json` file
+4. Commit and push the changes
+5. Your badge will reflect the updated statistics
+
+## Manual Triggering
+
+You can manually trigger the workflow from the GitHub Actions tab:
+
+1. Go to **Actions** in your repository
+2. Select **Update Hand Crafted Badge** from the workflow list
+3. Click **Run workflow**
+4. Choose the branch and click **Run workflow**
+
+This is useful for testing or updating the badge without making a new commit.

@@ -1,0 +1,227 @@
+---
+title: 'AI Detection Patterns'
+description: 'Complete list of patterns used to identify AI-assisted commits'
+---
+
+The Hand Crafted Badge tool scans commit messages for specific patterns that indicate AI assistance. These patterns are defined in the `AI_PATTERNS` array in `calculate-stats.js:4-28`.
+
+## How Detection Works
+
+Each commit message is tested against all patterns using JavaScript's regex `.test()` method. If any pattern matches, the commit is classified as AI-assisted.
+
+```javascript
+const isAI = AI_PATTERNS.some(pattern => pattern.test(msg));
+```
+
+## Pattern Categories
+
+<AccordionGroup>
+  <Accordion title="GitHub Copilot">
+    Detects commits co-authored by GitHub Copilot.
+
+    **Pattern:**
+    ```regex
+    /Co-authored-by: GitHub Copilot <noreply@github\.com>/i
+    ```
+
+    **Matches:**
+    - `Co-authored-by: GitHub Copilot <noreply@github.com>`
+    - Case-insensitive variant
+
+    **Source:** `calculate-stats.js:5`
+  </Accordion>
+
+  <Accordion title="Cursor AI">
+    Detects commits from Cursor AI editor with two pattern variants.
+
+    **Patterns:**
+    ```regex
+    /Co-authored-by: cursor-ai <sos@cursor\.sh>/i
+    /Co-authored-by: Cursor <sos@cursor\.sh>/i
+    ```
+
+    **Matches:**
+    - `Co-authored-by: cursor-ai <sos@cursor.sh>`
+    - `Co-authored-by: Cursor <sos@cursor.sh>`
+    - Case-insensitive variants
+
+    **Source:** `calculate-stats.js:6-7`
+  </Accordion>
+
+  <Accordion title="Claude / Anthropic">
+    Detects commits involving Claude AI assistant or Claude Code.
+
+    **Patterns:**
+    ```regex
+    /Claude/i
+    /Co-authored-by: Claude <noreply@anthropic\.com>/i
+    /Generated with .*Claude Code/i
+    ```
+
+    **Matches:**
+    - Any mention of "Claude" (case-insensitive)
+    - `Co-authored-by: Claude <noreply@anthropic.com>`
+    - `Generated with Claude Code`
+    - `Generated with Anthropic Claude Code`
+
+    **Source:** `calculate-stats.js:18-20`
+  </Accordion>
+
+  <Accordion title="Google Gemini">
+    Detects commits involving Google's Gemini AI.
+
+    **Patterns:**
+    ```regex
+    /Gemini/i
+    /AI-Assistant: Gemini/i
+    ```
+
+    **Matches:**
+    - Any mention of "Gemini" (case-insensitive)
+    - `AI-Assistant: Gemini`
+
+    **Source:** `calculate-stats.js:16-17`
+  </Accordion>
+
+  <Accordion title="Aider">
+    Detects commits from Aider, the AI pair programming tool.
+
+    **Patterns:**
+    ```regex
+    /aider:/i
+    /\(aider\)/i
+    /\[aider\]/i
+    ```
+
+    **Matches:**
+    - `aider: implemented feature`
+    - `Fix bug (aider)`
+    - `[aider] refactor code`
+    - Case-insensitive variants
+
+    **Source:** `calculate-stats.js:13-15`
+  </Accordion>
+
+  <Accordion title="Amazon Q Developer">
+    Detects commits from Amazon Q, AWS's AI coding assistant.
+
+    **Patterns:**
+    ```regex
+    /Amazon Q/i
+    /amazon-q-developer\[bot\]/i
+    ```
+
+    **Matches:**
+    - Any mention of "Amazon Q"
+    - `amazon-q-developer[bot]` (GitHub bot format)
+
+    **Source:** `calculate-stats.js:22-23`
+  </Accordion>
+
+  <Accordion title="Codeium">
+    Detects commits involving Codeium AI assistant.
+
+    **Pattern:**
+    ```regex
+    /Codeium/i
+    ```
+
+    **Matches:**
+    - Any mention of "Codeium" (case-insensitive)
+
+    **Source:** `calculate-stats.js:24`
+  </Accordion>
+
+  <Accordion title="Tabnine">
+    Detects commits involving Tabnine AI code completion.
+
+    **Pattern:**
+    ```regex
+    /Tabnine/i
+    ```
+
+    **Matches:**
+    - Any mention of "Tabnine" (case-insensitive)
+
+    **Source:** `calculate-stats.js:25`
+  </Accordion>
+
+  <Accordion title="OpenAI Codex">
+    Detects commits involving OpenAI's Codex.
+
+    **Pattern:**
+    ```regex
+    /Codex/i
+    ```
+
+    **Matches:**
+    - Any mention of "Codex" (case-insensitive)
+
+    **Source:** `calculate-stats.js:21`
+  </Accordion>
+
+  <Accordion title="Generic AI Patterns">
+    Catches AI assistants not covered by specific patterns.
+
+    **Patterns:**
+    ```regex
+    /Co-authored-by: .*<.*ai.*@.*>/i
+    /AI-Assistant:/i
+    /Generated-by:/i
+    /AI-Generated: true/i
+    /\[ai-commit\]/i
+    /Assisted-by:/i
+    /AI-Model:/i
+    ```
+
+    **Matches:**
+    - `Co-authored-by: MyAI <bot-ai@example.com>`
+    - `Co-authored-by: Assistant <assistant@ai.tools>`
+    - `AI-Assistant: GPT-4`
+    - `Generated-by: CustomAI`
+    - `AI-Generated: true`
+    - `[ai-commit] Fix bug`
+    - `Assisted-by: AI Tool`
+    - `AI-Model: gpt-4`
+
+    **Note:** The generic co-author pattern `/Co-authored-by: .*<.*ai.*@.*>/i` matches any co-author email containing "ai" anywhere in the address.
+
+    **Source:** `calculate-stats.js:8-12, 26-27`
+  </Accordion>
+</AccordionGroup>
+
+## Complete Pattern Array
+
+Here's the complete `AI_PATTERNS` array as defined in the source code:
+
+```javascript calculate-stats.js
+const AI_PATTERNS = [
+  /Co-authored-by: GitHub Copilot <noreply@github\.com>/i,
+  /Co-authored-by: cursor-ai <sos@cursor\.sh>/i,
+  /Co-authored-by: Cursor <sos@cursor\.sh>/i,
+  /AI-Assistant:/i,
+  /Generated-by:/i,
+  /AI-Generated: true/i,
+  /Co-authored-by: .*<.*ai.*@.*>/i,
+  /\[ai-commit\]/i,
+  /aider:/i,
+  /\(aider\)/i,
+  /\[aider\]/i,
+  /Gemini/i,
+  /AI-Assistant: Gemini/i,
+  /Claude/i,
+  /Co-authored-by: Claude <noreply@anthropic\.com>/i,
+  /Generated with .*Claude Code/i,
+  /Codex/i,
+  /Amazon Q/i,
+  /amazon-q-developer\[bot\]/i,
+  /Codeium/i,
+  /Tabnine/i,
+  /Assisted-by:/i,
+  /AI-Model:/i
+];
+```
+
+## Adding Custom Patterns
+
+To add detection for additional AI tools, add new regex patterns to the `AI_PATTERNS` array. All patterns are case-insensitive (note the `/i` flag).

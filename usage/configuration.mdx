@@ -1,0 +1,72 @@
+---
+title: Configuration Options
+description: Configure the commit analysis behavior using environment variables
+---
+
+## COMMIT_LIMIT Environment Variable
+
+By default, the script analyzes **all commits** in your repository history. For large repositories with thousands of commits, you can limit the number of commits analyzed using the `COMMIT_LIMIT` environment variable.
+
+### How It Works
+
+The script reads the `COMMIT_LIMIT` environment variable and passes it to the git log command:
+
+```javascript
+const limit = process.env.COMMIT_LIMIT ? `-n ${process.env.COMMIT_LIMIT}` : '';
+const output = execSync(`git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`).toString();
+```
+
+*Source: calculate-stats.js:32*
+
+## Usage Examples
+
+### Running Locally
+
+To analyze only the last 500 commits:
+
+```bash
+COMMIT_LIMIT=500 node calculate-stats.js
+```
+
+To analyze only the last 100 commits:
+
+```bash
+COMMIT_LIMIT=100 node calculate-stats.js
+```
+
+### Setting in GitHub Actions
+
+To configure the commit limit in your GitHub Actions workflow, add an `env` section to the Calculate Stats step:
+
+```yaml
+- name: Calculate Stats
+  run: node calculate-stats.js
+  env:
+    COMMIT_LIMIT: 500
+```
+
+<Tip>
+For most repositories, analyzing the last 500-1000 commits provides a representative sample while keeping the analysis fast.
+</Tip>
+
+## When to Use Commit Limits
+
+Consider using `COMMIT_LIMIT` when:
+
+- **Large repositories** - Repositories with 5,000+ commits may take longer to analyze
+- **Faster CI/CD** - Limiting commits reduces execution time in GitHub Actions
+- **Recent history focus** - You only want to track recent development patterns
+- **Monorepos** - Large monorepos with extensive history benefit from sampling
+
+<Info>
+If `COMMIT_LIMIT` is not set, the script will analyze your entire git history. This is fine for most repositories but may be slow for very large projects.
+</Info>
+
+## No Other Configuration Needed
+
+The script requires no additional configuration files or setup. It automatically:
+
+- Detects your git repository
+- Excludes merge commits (`--no-merges` flag)
+- Tests against all built-in AI detection patterns
+- Generates the output JSON file

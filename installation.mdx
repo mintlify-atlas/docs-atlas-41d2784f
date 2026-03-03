@@ -1,0 +1,198 @@
+---
+title: Installation
+description: Set up the Hand Crafted Badge in your GitHub repository
+---
+
+Follow these steps to install the Hand Crafted Badge in your repository.
+
+## Prerequisites
+
+- A GitHub repository with git history
+- Node.js installed (for local testing)
+- Write permissions to your repository
+
+## Setup process
+
+<Steps>
+  <Step title="Copy the analyzer script">
+    Copy `calculate-stats.js` to your repository root directory.
+
+    <CodeGroup>
+    ```javascript calculate-stats.js
+    const { execSync } = require('child_process');
+    const fs = require('fs');
+
+    const AI_PATTERNS = [
+      /Co-authored-by: GitHub Copilot <noreply@github\.com>/i,
+      /Co-authored-by: cursor-ai <sos@cursor\.sh>/i,
+      /Co-authored-by: Cursor <sos@cursor\.sh>/i,
+      /AI-Assistant:/i,
+      /Generated-by:/i,
+      /AI-Generated: true/i,
+      /Co-authored-by: .*<.*ai.*@.*>/i,
+      /\[ai-commit\]/i,
+      /aider:/i,
+      /\(aider\)/i,
+      /\[aider\]/i,
+      /Gemini/i,
+      /AI-Assistant: Gemini/i,
+      /Claude/i,
+      /Co-authored-by: Claude <noreply@anthropic\.com>/i,
+      /Generated with .*Claude Code/i,
+      /Codex/i,
+      /Amazon Q/i,
+      /amazon-q-developer\[bot\]/i,
+      /Codeium/i,
+      /Tabnine/i,
+      /Assisted-by:/i,
+      /AI-Model:/i
+    ];
+
+    function getCommits() {
+      try {
+        const limit = process.env.COMMIT_LIMIT ? `-n ${process.env.COMMIT_LIMIT}` : '';
+        // Get all commit messages, separated by a special delimiter
+        const output = execSync(`git log ${limit} --format="%B%n---COMMIT-END---" --no-merges`).toString();
+        return output.split('---COMMIT-END---').map(s => s.trim()).filter(Boolean);
+      } catch (error) {
+        console.error('Error reading git log:', error.message);
+        process.exit(1);
+      }
+    }
+
+    function analyzeCommits(commits) {
+      let aiCount = 0;
+      let totalCount = commits.length;
+
+      commits.forEach(msg => {
+        const isAI = AI_PATTERNS.some(pattern => pattern.test(msg));
+        if (isAI) {
+          aiCount++;
+        }
+      });
+
+      const humanCount = totalCount - aiCount;
+      const humanPercentage = totalCount > 0 ? Math.round((humanCount / totalCount) * 100) : 100;
+
+      return {
+        total: totalCount,
+        ai: aiCount,
+        human: humanCount,
+        humanPercentage: humanPercentage
+      };
+    }
+
+    const commits = getCommits();
+    const stats = analyzeCommits(commits);
+
+    console.log('--- Stats ---');
+    console.log(`Total Commits: ${stats.total}`);
+    console.log(`Hand Crafted: ${stats.human} (${stats.humanPercentage}%)`);
+    console.log(`AI Co-edited: ${stats.ai}`);
+
+    // Save to a JSON for Shields.io or Action consumption
+    const shieldsData = {
+      schemaVersion: 1,
+      label: 'hand crafted',
+      message: `${stats.humanPercentage}%`,
+      color: stats.humanPercentage > 80 ? 'green' : stats.humanPercentage > 50 ? 'yellow' : 'orange'
+    };
+
+    fs.writeFileSync('hand-crafted-stats.json', JSON.stringify(shieldsData, null, 2));
+    console.log('\nSaved stats to hand-crafted-stats.json');
+    ```
+    </CodeGroup>
+
+    This script scans your git history and generates the badge data.
+  </Step>
+
+  <Step title="Create the workflows directory">
+    If it doesn't already exist, create the `.github/workflows/` directory in your repository:
+
+    ```bash
+    mkdir -p .github/workflows
+    ```
+  </Step>
+
+  <Step title="Add the GitHub Actions workflow">
+    Create `.github/workflows/human-crafted-badge.yml` with the following content:
+
+    ```yaml .github/workflows/human-crafted-badge.yml
+    name: Update Hand Crafted Badge
+
+    on:
+      push:
+        branches:
+          - main
+      workflow_dispatch:
+
+    concurrency:
+      group: badge-update
+      cancel-in-progress: true
+
+    jobs:
+      update-badge:
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+            with:
+              fetch-depth: 0 # Important for full git history
+
+          - name: Setup Node.js
+            uses: actions/setup-node@v4
+            with:
+              node-version: '20'
+
+          - name: Calculate Stats
+            run: node calculate-stats.js
+
+          - name: Commit and Push
+            run: |
+              git config --global user.name 'github-actions[bot]'
+              git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+              git add hand-crafted-stats.json
+              git commit -m "docs: update hand-crafted stats [skip ci]" || echo "No changes to commit"
+              git push origin HEAD:main
+    ```
+
+    <Warning>
+    The workflow requires `fetch-depth: 0` to access the full git history. Without this, only the latest commit would be analyzed.
+    </Warning>
+  </Step>
+
+  <Step title="Commit and push">
+    Commit these files to your repository:
+
+    ```bash
+    git add calculate-stats.js .github/workflows/human-crafted-badge.yml
+    git commit -m "feat: add hand crafted badge"
+    git push
+    ```
+
+    The GitHub Action will automatically run and generate the `hand-crafted-stats.json` file.
+  </Step>
+</Steps>
+
+## Optional configuration
+
+You can limit the number of commits analyzed by setting the `COMMIT_LIMIT` environment variable in the GitHub Action. This is useful for very large repositories:
+
+```yaml
+- name: Calculate Stats
+  run: node calculate-stats.js
+  env:
+    COMMIT_LIMIT: 500 # Only look at the last 500 commits
+```
+
+<Info>
+The badge will automatically update on every push to the main branch. You can also manually trigger the workflow using the "workflow_dispatch" event.
+</Info>
+
+## Next steps
+
+<Card title="Quick start" icon="rocket" href="/quickstart">
+  Learn how to run the script locally and add the badge to your README
+</Card>
